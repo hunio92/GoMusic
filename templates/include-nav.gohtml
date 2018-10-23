@@ -1,0 +1,26 @@
+{{define "nav"}}
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container d-inline">
+        <form method="post" action="/">
+            <div class="form-row">
+                <div class="form-group col-lg-4">
+                    <input type="text" class="form-control" name="inputTitle" placeholder="Title" required="required">
+                </div>
+                <div class="form-group col-lg-4">
+                    <input type="text" class="form-control" name="inputLink" placeholder="Link" required="required">
+                </div>
+                <div class="form-group col-lg-2">
+                    <input type="password" class="form-control" name="inputPassword" placeholder="Password" required="required">
+                </div>
+                <div class="form-group col-lg-1">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+                <div class="form-group col-lg-1">
+                    <button type="button" class="btn btn-warning"><a href="/static/magyar.txt" download="magyar.txt">Download</a></button>
+                </div>
+            </div>
+        </form>
+    </div>
+</nav>
+{{end}}
