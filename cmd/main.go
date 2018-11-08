@@ -1,8 +1,8 @@
 package main
 
 import (
-	"MyMusic/Database"
-	"MyMusic/server"
+	"GoMusic/database"
+	"GoMusic/server"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +20,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("mysql: %s", err.Error())
 	}
+	defer db.Close()
 
 	s := server.NewServer(db)
 	http.ListenAndServe(":"+port, s.Mux)

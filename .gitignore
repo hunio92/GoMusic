@@ -32,6 +32,9 @@
 ### Go Patch ###
 /vendor/
 /Godeps/
-
+ 
+### Other ###
+*.json
+*.exe
 
 # End of https://www.gitignore.io/api/go,git

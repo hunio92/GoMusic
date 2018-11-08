@@ -1,14 +1,14 @@
 package server
 
 import (
-	"MyMusic/Database"
+	"GoMusic/database"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
+	
 	"github.com/go-chi/chi"
 )
 
@@ -19,29 +19,44 @@ type Server struct {
 	Mux *chi.Mux
 }
 
+type Middleware func(http.Handler) http.Handler
+
 func init() {
-	tpl = template.Must(template.ParseGlob("templates/*.gohtml"))
+	tpl = template.Must(template.ParseGlob("./templates/*.gohtml"))
 }
 
 func NewServer(db *Database.MySqlDB) *Server {
 	s := &Server{
 		Database: db,
-		Mux: chi.NewMux(),
+		Mux: chi.NewRouter(),
 	}
-
+ 
 	s.configRoutes()
 
 	return s
 }
 
 func (s *Server) configRoutes() {
+	// Middlewares
+	s.Mux.Use(Authentication)
 	// Routes
 	s.Mux.Get("/", s.handleLogin)
-	s.Mux.Get("/home", s.handleHome)
-
+	
+	s.Mux.Route("/home", func(homeRouter chi.Router) {
+		homeRouter.Get("/home", s.handleHome)
+	})
+	
+ 
 	// Static files
 	workDir, _ := os.Getwd()
 	fileServer(s.Mux, "/static", http.Dir(filepath.Join(workDir, "static")))
+}
+
+func Authentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
