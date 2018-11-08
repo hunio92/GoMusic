@@ -16,7 +16,7 @@ var tpl *template.Template
 
 type Server struct {
 	Database *Database.MySqlDB
-	Mux *chi.Mux
+	chi      *chi.Mux
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -28,7 +28,7 @@ func init() {
 func NewServer(db *Database.MySqlDB) *Server {
 	s := &Server{
 		Database: db,
-		Mux: chi.NewRouter(),
+		chi:      chi.NewRouter(),
 	}
  
 	s.configRoutes()
@@ -38,18 +38,18 @@ func NewServer(db *Database.MySqlDB) *Server {
 
 func (s *Server) configRoutes() {
 	// Middlewares
-	s.Mux.Use(Authentication)
+	s.chi.Use(Authentication)
 	// Routes
-	s.Mux.Get("/", s.handleLogin)
+	s.chi.Get("/", s.handleLogin)
 	
-	s.Mux.Route("/home", func(homeRouter chi.Router) {
+	s.chi.Route("/home", func(homeRouter chi.Router) {
 		homeRouter.Get("/home", s.handleHome)
 	})
 	
  
 	// Static files
 	workDir, _ := os.Getwd()
-	fileServer(s.Mux, "/static", http.Dir(filepath.Join(workDir, "static")))
+	fileServer(s.chi, "/static", http.Dir(filepath.Join(workDir, "static")))
 }
 
 func Authentication(next http.Handler) http.Handler {

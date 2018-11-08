@@ -23,5 +23,5 @@ func main() {
 	defer db.Close()
 
 	s := server.NewServer(db)
-	http.ListenAndServe(":"+port, s.Mux)
+	http.ListenAndServe(":"+port, s.chi)
 }
