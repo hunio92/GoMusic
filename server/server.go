@@ -16,7 +16,7 @@ var tpl *template.Template
 
 type Server struct {
 	Database *Database.MySqlDB
-	chi      *chi.Mux
+	Mux      *chi.Mux
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -28,7 +28,7 @@ func init() {
 func NewServer(db *Database.MySqlDB) *Server {
 	s := &Server{
 		Database: db,
-		chi:      chi.NewRouter(),
+		Mux:      chi.NewRouter(),
 	}
  
 	s.configRoutes()
@@ -37,29 +37,29 @@ func NewServer(db *Database.MySqlDB) *Server {
 }
 
 func (s *Server) configRoutes() {
-	// Middlewares
-	s.chi.Use(Authentication)
-	// Routes
-	s.chi.Get("/", s.handleLogin)
+	// Public Routes
+	s.Mux.HandleFunc("/", s.renderLogin)
+	s.Mux.Post("/", s.login)
 	
-	s.chi.Route("/home", func(homeRouter chi.Router) {
-		homeRouter.Get("/home", s.handleHome)
+	// Private Routes
+	s.Mux.Route("/home", func(homeRouter chi.Router) {
+		homeRouter.Use(Authentication)
+		homeRouter.HandleFunc("/", s.renderHome)
 	})
 	
- 
 	// Static files
 	workDir, _ := os.Getwd()
-	fileServer(s.chi, "/static", http.Dir(filepath.Join(workDir, "static")))
+	fileServer(s.Mux, "/static", http.Dir(filepath.Join(workDir, "static")))
 }
 
 func Authentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		
+		fmt.Println("Middleware")
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request) {
 	err := tpl.ExecuteTemplate(w, "login.gohtml", nil)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
@@ -67,7 +67,29 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	email := r.Form["email"]
+	pass := r.Form["password"]
+	
+	if email[0] == "asd@asd.com" && pass[0] == "123" {
+		fmt.Println("OK")
+		http.Redirect(w, r, "/home", http.StatusFound)
+		
+		return
+	}
+	
+	fmt.Println("WRONG")
+	loginInfo := struct {
+		Message string
+	}{
+		"Wrong username or password !",
+	}
+	
+	tpl.ExecuteTemplate(w, "login.gohtml", loginInfo)
+}
+
+func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
 	err := tpl.ExecuteTemplate(w, "home.gohtml", nil)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
