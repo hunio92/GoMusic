@@ -3,6 +3,7 @@ package server
 import (
 	"GoMusic/database"
 	"fmt"
+	"github.com/gorilla/sessions"
 	"html/template"
 	"net/http"
 	"os"
@@ -17,33 +18,35 @@ var tpl *template.Template
 type Server struct {
 	Database *Database.MySqlDB
 	Mux      *chi.Mux
+	Sessions  *sessions.CookieStore
 }
-
-type Middleware func(http.Handler) http.Handler
 
 func init() {
 	tpl = template.Must(template.ParseGlob("./templates/*.gohtml"))
+	
 }
 
 func NewServer(db *Database.MySqlDB) *Server {
+	store := sessions.NewCookieStore([]byte("COOKIE_KEY"))
 	s := &Server{
 		Database: db,
 		Mux:      chi.NewRouter(),
+		Sessions: store,
 	}
  
 	s.configRoutes()
-
+	
 	return s
 }
 
 func (s *Server) configRoutes() {
 	// Public Routes
 	s.Mux.HandleFunc("/", s.renderLogin)
-	s.Mux.Post("/", s.login)
+	s.Mux.Post("/login", s.login)
 	
 	// Private Routes
 	s.Mux.Route("/home", func(homeRouter chi.Router) {
-		homeRouter.Use(Authentication)
+		homeRouter.Use(s.authentication)
 		homeRouter.HandleFunc("/", s.renderHome)
 	})
 	
@@ -52,44 +55,32 @@ func (s *Server) configRoutes() {
 	fileServer(s.Mux, "/static", http.Dir(filepath.Join(workDir, "static")))
 }
 
-func Authentication(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Middleware")
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request) {
-	err := tpl.ExecuteTemplate(w, "login.gohtml", nil)
+	session, err := s.Sessions.Get(r, "cookie-name")
+	if err != nil {
+		fmt.Println("Could not get session cookie")
+	}
+	
+	var Message struct {
+		Error string
+	}
+	if flashes := session.Flashes(); len(flashes) > 0 {
+		flash := flashes[0].(string)
+		Message.Error = flash
+	}
+	
+	fmt.Println("error: ", Message.Error)
+	err = tpl.ExecuteTemplate(w, "login.gohtml", Message)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
-func (s *Server) login(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	email := r.Form["email"]
-	pass := r.Form["password"]
-	
-	if email[0] == "asd@asd.com" && pass[0] == "123" {
-		fmt.Println("OK")
-		http.Redirect(w, r, "/home", http.StatusFound)
-		
-		return
-	}
-	
-	fmt.Println("WRONG")
-	loginInfo := struct {
-		Message string
-	}{
-		"Wrong username or password !",
-	}
-	
-	tpl.ExecuteTemplate(w, "login.gohtml", loginInfo)
-}
-
 func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
+	session, _ := s.Sessions.Get(r, "cookie-name")
+	session.AddFlash("")
+	session.Save(r, w)
 	err := tpl.ExecuteTemplate(w, "home.gohtml", nil)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
